@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # OpenAI settings
     OPENAI_API_KEY: Optional[str] = None
 
+    # Dashboard cache settings
+    DASHBOARD_CACHE_TTL_SECONDS: int = 60
+
     @property
     def database_url(self) -> str:
         """Get database URL."""

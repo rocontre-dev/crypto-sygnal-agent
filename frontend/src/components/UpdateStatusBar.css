@@ -50,6 +50,12 @@
   background: #fffbeb;
 }
 
+.update-status-bar__cache {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   .update-status-bar {
     flex-direction: column;

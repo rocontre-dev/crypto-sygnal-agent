@@ -4,72 +4,113 @@ import * as api from '../services/api';
 
 // Mock the API module
 vi.mock('../services/api', () => ({
+  getDashboard: vi.fn(),
+  // Keep old functions for backward compatibility in other tests
   getMarkets: vi.fn(),
   getSignal: vi.fn(),
   getAIExplanation: vi.fn(),
 }));
 
-const mockMarketsResponse = {
-  data: [
+const mockDashboardResponse = {
+  updated_at: '2024-01-15T10:30:00Z',
+  source: 'coingecko' as const,
+  cache_status: 'fresh' as const,
+  generation_time_ms: 1234.5,
+  items: [
     {
-      id: 1,
-      symbol: 'BTC',
-      price: 67500,
-      market_cap: 1300000000000,
-      volume_24h: 25000000000,
-      change_24h: 2.5,
-      timestamp: '2024-01-15T10:30:00Z',
-      source: 'coingecko' as const,
+      market_data: {
+        symbol: 'BTC',
+        price: 67500,
+        market_cap: 1300000000000,
+        volume_24h: 25000000000,
+        change_24h: 2.5,
+        timestamp: '2024-01-15T10:30:00Z',
+        source: 'coingecko' as const,
+      },
+      signal: {
+        symbol: 'BTC',
+        signal: 'ENTER',
+        confidence_score: 75,
+        risk_level: 'MEDIUM',
+        stop_loss: 65000,
+        take_profit: 70000,
+        timestamp: '2024-01-15T10:30:00Z',
+      },
+      ai_explanation: {
+        symbol: 'BTC',
+        signal: 'ENTER',
+        confidence_score: 75,
+        risk_level: 'MEDIUM',
+        technical_summary: 'Technical summary for BTC',
+        plain_spanish_explanation: 'Explicación para BTC',
+        risk_warning: 'Risk warning for BTC',
+        educational_disclaimer: 'Educational disclaimer for BTC',
+        timestamp: '2024-01-15T10:30:00Z',
+      },
     },
     {
-      id: 2,
-      symbol: 'ETH',
-      price: 3500,
-      market_cap: 420000000000,
-      volume_24h: 12000000000,
-      change_24h: -1.2,
-      timestamp: '2024-01-15T10:30:00Z',
-      source: 'coingecko' as const,
+      market_data: {
+        symbol: 'ETH',
+        price: 3500,
+        market_cap: 420000000000,
+        volume_24h: 12000000000,
+        change_24h: -1.2,
+        timestamp: '2024-01-15T10:30:00Z',
+        source: 'coingecko' as const,
+      },
+      signal: {
+        symbol: 'ETH',
+        signal: 'WAIT',
+        confidence_score: 50,
+        risk_level: 'MEDIUM',
+        stop_loss: 3400,
+        take_profit: 3700,
+        timestamp: '2024-01-15T10:30:00Z',
+      },
+      ai_explanation: {
+        symbol: 'ETH',
+        signal: 'WAIT',
+        confidence_score: 50,
+        risk_level: 'MEDIUM',
+        technical_summary: 'Technical summary for ETH',
+        plain_spanish_explanation: 'Explicación para ETH',
+        risk_warning: 'Risk warning for ETH',
+        educational_disclaimer: 'Educational disclaimer for ETH',
+        timestamp: '2024-01-15T10:30:00Z',
+      },
     },
     {
-      id: 3,
-      symbol: 'SOL',
-      price: 150,
-      market_cap: 65000000000,
-      volume_24h: 3000000000,
-      change_24h: 5.8,
-      timestamp: '2024-01-15T10:30:00Z',
-      source: 'coingecko' as const,
+      market_data: {
+        symbol: 'SOL',
+        price: 150,
+        market_cap: 65000000000,
+        volume_24h: 3000000000,
+        change_24h: 5.8,
+        timestamp: '2024-01-15T10:30:00Z',
+        source: 'coingecko' as const,
+      },
+      signal: {
+        symbol: 'SOL',
+        signal: 'ENTER',
+        confidence_score: 80,
+        risk_level: 'HIGH',
+        stop_loss: 140,
+        take_profit: 170,
+        timestamp: '2024-01-15T10:30:00Z',
+      },
+      ai_explanation: {
+        symbol: 'SOL',
+        signal: 'ENTER',
+        confidence_score: 80,
+        risk_level: 'HIGH',
+        technical_summary: 'Technical summary for SOL',
+        plain_spanish_explanation: 'Explicación para SOL',
+        risk_warning: 'Risk warning for SOL',
+        educational_disclaimer: 'Educational disclaimer for SOL',
+        timestamp: '2024-01-15T10:30:00Z',
+      },
     },
   ],
-  count: 3,
-};
-
-const mockSignalResponse = {
-  symbol: 'BTC',
-  signal: 'ENTER',
-  confidence_score: 75,
-  risk_level: 'MEDIUM',
-  reason: 'Test reason',
-  stop_loss: 65000,
-  take_profit: 70000,
-  invalidation_condition: 'Test condition',
-  timestamp: '2024-01-15T10:30:00Z',
-};
-
-const mockAIExplanationResponse = {
-  symbol: 'BTC',
-  signal: 'ENTER',
-  confidence_score: 75,
-  risk_level: 'MEDIUM',
-  stop_loss: 65000,
-  take_profit: 70000,
-  invalidation_condition: 'Test condition',
-  technical_summary: 'Test summary',
-  plain_spanish_explanation: 'Test explanation',
-  risk_warning: 'Test warning',
-  educational_disclaimer: 'Test disclaimer',
-  timestamp: '2024-01-15T10:30:00Z',
 };
 
 describe('Dashboard', () => {
@@ -77,15 +118,11 @@ describe('Dashboard', () => {
     vi.clearAllMocks();
   });
 
-  it('renders BTC, ETH, and SOL cards', async () => {
-    // Mock API responses
-    (api.getMarkets as vi.Mock).mockResolvedValue(mockMarketsResponse);
-    (api.getSignal as vi.Mock).mockResolvedValue(mockSignalResponse);
-    (api.getAIExplanation as vi.Mock).mockResolvedValue(mockAIExplanationResponse);
+  it('renders BTC, ETH, and SOL cards from dashboard endpoint', async () => {
+    (api.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse);
 
     render(<Dashboard />);
 
-    // Wait for the dashboard to load
     await waitFor(() => {
       expect(screen.getByText('📈 CryptoSignalAgent')).toBeInTheDocument();
     });
@@ -97,9 +134,7 @@ describe('Dashboard', () => {
   });
 
   it('renders the refresh button', async () => {
-    (api.getMarkets as vi.Mock).mockResolvedValue(mockMarketsResponse);
-    (api.getSignal as vi.Mock).mockResolvedValue(mockSignalResponse);
-    (api.getAIExplanation as vi.Mock).mockResolvedValue(mockAIExplanationResponse);
+    (api.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse);
 
     render(<Dashboard />);
 
@@ -108,10 +143,8 @@ describe('Dashboard', () => {
     });
   });
 
-  it('renders the UpdateStatusBar with market data', async () => {
-    (api.getMarkets as vi.Mock).mockResolvedValue(mockMarketsResponse);
-    (api.getSignal as vi.Mock).mockResolvedValue(mockSignalResponse);
-    (api.getAIExplanation as vi.Mock).mockResolvedValue(mockAIExplanationResponse);
+  it('renders the UpdateStatusBar with dashboard metadata', async () => {
+    (api.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse);
 
     render(<Dashboard />);
 
@@ -120,8 +153,8 @@ describe('Dashboard', () => {
     });
   });
 
-  it('shows error state when API fails', async () => {
-    (api.getMarkets as vi.Mock).mockRejectedValue(new Error('API Error'));
+  it('shows error state when dashboard API fails', async () => {
+    (api.getDashboard as vi.Mock).mockRejectedValue(new Error('API Error'));
 
     render(<Dashboard />);
 

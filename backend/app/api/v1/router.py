@@ -7,6 +7,7 @@ from .markets import router as markets_router
 from .indicators import router as indicators_router
 from .signals import router as signals_router
 from .ai_explanations import router as ai_explanations_router
+from .dashboard import router as dashboard_router
 
 # Create the main API v1 router
 api_router = APIRouter()
@@ -17,3 +18,4 @@ api_router.include_router(markets_router)
 api_router.include_router(indicators_router)
 api_router.include_router(signals_router)
 api_router.include_router(ai_explanations_router)
+api_router.include_router(dashboard_router)

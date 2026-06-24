@@ -1,6 +1,6 @@
 /** API service for communicating with the backend. */
 
-import type { MarketDataListResponse } from '../types/market';
+import type { MarketDataListResponse, DashboardResponse } from '../types/market';
 import type { TradingSignal } from '../types/signal';
 import type { AIExplanation } from '../types/aiExplanation';
 
@@ -25,6 +25,24 @@ export async function getMarkets(): Promise<MarketDataListResponse> {
       throw new ApiError('No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose.');
     }
     throw new ApiError(`Error al obtener datos del mercado: ${response.statusText}`, response.status);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetches aggregated dashboard data for all supported cryptocurrencies.
+ * This is a single endpoint that returns market data, signals, and AI explanations.
+ * @throws {ApiError} If the request fails
+ */
+export async function getDashboard(): Promise<DashboardResponse> {
+  const response = await fetch(`${API_URL}/api/v1/dashboard`);
+
+  if (!response.ok) {
+    if (response.status === 0) {
+      throw new ApiError('No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose.');
+    }
+    throw new ApiError(`Error al obtener datos del dashboard: ${response.statusText}`, response.status);
   }
 
   return response.json();
