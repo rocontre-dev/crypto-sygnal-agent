@@ -156,11 +156,17 @@ Get market data for a specific cryptocurrency.
 
 Get calculated technical indicators for a specific cryptocurrency.
 
-Indicators calculated:
+Indicators are calculated from real historical OHLCV data from Binance public klines.
+
+**Indicators calculated:**
 - RSI (14 periods) - Relative Strength Index
 - MACD (12, 26, 9) - Moving Average Convergence Divergence
+- MACD Signal (9-period EMA of MACD)
+- MACD Histogram (MACD - Signal)
 - EMA20, EMA50, EMA200 - Exponential Moving Averages
 - SMA20 - Simple Moving Average
+- ATR (14 periods) - Average True Range
+- ADX (14 periods) - Average Directional Index
 - Average Volume (20 periods)
 - Percent Change
 
@@ -169,25 +175,37 @@ Indicators calculated:
 **Path Parameters:**
 - `symbol` - Cryptocurrency symbol (BTC, ETH, SOL)
 
+**Query Parameters:**
+- `timeframe` - Candle timeframe (default: `1d`). Currently only `1d` is supported.
+
 **Response:**
 ```json
 {
   "symbol": "BTC",
-  "rsi": "48.30",
-  "macd": "125.80",
-  "ema20": "67200.00",
-  "ema50": "66450.00",
-  "ema200": "61200.00",
-  "sma20": "67010.00",
-  "avg_volume": "21000000000.00",
-  "percent_change": "1.60",
+  "timeframe": "1d",
+  "rsi": 48.3,
+  "macd": 125.8,
+  "macd_signal": 118.45,
+  "macd_histogram": 7.35,
+  "ema20": 67200.0,
+  "ema50": 66450.0,
+  "ema200": 61200.0,
+  "sma20": 67010.0,
+  "atr": 1250.5,
+  "adx": 28.45,
+  "avg_volume": 21000000000.0,
+  "percent_change": 1.6,
+  "volume_available": true,
+  "source": "binance_klines",
   "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
 
 **Status Codes:**
 - `200 OK` - Successfully calculated indicators
+- `400 Bad Request` - Invalid or unsupported timeframe (e.g., '4h')
 - `404 Not Found` - Symbol not supported (e.g., 'INVALID')
+- `503 Service Unavailable` - Unable to fetch data from Binance
 
 ### Trading Signals
 
