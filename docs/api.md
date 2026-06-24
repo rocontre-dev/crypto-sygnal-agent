@@ -69,6 +69,8 @@ Get welcome message and API information.
 
 ### Market Data
 
+Market data is sourced from the [CoinGecko API](https://www.coingecko.com/en/api). When CoinGecko is unavailable or returns incomplete data, the system falls back to mock data and logs a warning.
+
 #### Get All Markets
 
 Get market data for all supported cryptocurrencies.
@@ -114,6 +116,10 @@ Get market data for all supported cryptocurrencies.
 **Status Codes:**
 - `200 OK` - Successfully retrieved market data
 
+**Data Source:**
+- Primary: CoinGecko API v3
+- Fallback: Mock data (when CoinGecko is unavailable)
+
 #### Get Market by Symbol
 
 Get market data for a specific cryptocurrency.
@@ -139,6 +145,10 @@ Get market data for a specific cryptocurrency.
 **Status Codes:**
 - `200 OK` - Successfully retrieved market data
 - `404 Not Found` - Symbol not found (e.g., invalid symbol like 'INVALID')
+
+**Data Source:**
+- Primary: CoinGecko API v3
+- Fallback: Mock data (when CoinGecko is unavailable)
 
 ### Technical Indicators
 
