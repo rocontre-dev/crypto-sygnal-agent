@@ -1,0 +1,29 @@
+/** Risk badge styles. */
+
+.risk-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* LOW = green */
+.risk-badge--low {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+/* MEDIUM = yellow/orange */
+.risk-badge--medium {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* HIGH = red */
+.risk-badge--high {
+  background-color: #fee2e2;
+  color: #991b1b;
+}

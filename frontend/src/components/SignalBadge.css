@@ -1,0 +1,35 @@
+/** Signal badge styles. */
+
+.signal-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ENTER = green */
+.signal-badge--enter {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+/* WAIT = gray */
+.signal-badge--wait {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+/* REDUCE = yellow/orange */
+.signal-badge--reduce {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* EXIT = red */
+.signal-badge--exit {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
