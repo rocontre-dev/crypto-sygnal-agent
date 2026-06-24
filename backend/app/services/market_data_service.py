@@ -79,6 +79,7 @@ class MarketDataService:
                     volume_24h=Decimal(str(data["volume_24h"])),
                     change_24h=Decimal(str(data["change_24h"])),
                     timestamp=data["last_updated"],
+                    source=data.get("source", "coingecko"),
                 )
             )
             id_counter += 1
@@ -128,6 +129,7 @@ class MarketDataService:
                 volume_24h=Decimal(str(data["volume_24h"])),
                 change_24h=Decimal(str(data["change_24h"])),
                 timestamp=data["last_updated"],
+                source=data.get("source", "coingecko"),
             )
             return self._entity_to_response(entity)
 
@@ -205,6 +207,7 @@ class MarketDataService:
                     volume_24h=values["volume_24h"],
                     change_24h=values["change_24h"],
                     timestamp=now,
+                    source="mock",
                 )
             )
 
@@ -228,4 +231,5 @@ class MarketDataService:
             volume_24h=entity.volume_24h,
             change_24h=entity.change_24h,
             timestamp=entity.timestamp,
+            source=entity.source,
         )

@@ -101,6 +101,7 @@ class TestCoinGeckoServiceParseResponse:
         assert btc["volume_24h"] == 25000000000.00
         assert btc["change_24h"] == 2.50
         assert isinstance(btc["last_updated"], datetime)
+        assert btc["source"] == "coingecko"
 
         # Check ETH data
         eth = result["ETH"]
@@ -108,6 +109,7 @@ class TestCoinGeckoServiceParseResponse:
         assert eth["market_cap"] == 420000000000.00
         assert eth["volume_24h"] == 12000000000.00
         assert eth["change_24h"] == -1.20
+        assert eth["source"] == "coingecko"
 
         # Check SOL data
         sol = result["SOL"]
@@ -115,6 +117,7 @@ class TestCoinGeckoServiceParseResponse:
         assert sol["market_cap"] == 65000000000.00
         assert sol["volume_24h"] == 3000000000.00
         assert sol["change_24h"] == 5.80
+        assert sol["source"] == "coingecko"
 
     def test_parse_partial_response(self, coingecko_service, partial_coingecko_response):
         """Test parsing a partial response with only some symbols."""
@@ -231,6 +234,10 @@ class TestCoinGeckoServiceFetchMarketData:
             assert "ETH" in result
             assert "SOL" in result
 
+            # Verify source is set to "coingecko" for all symbols
+            for symbol_data in result.values():
+                assert symbol_data["source"] == "coingecko"
+
     @pytest.mark.asyncio
     async def test_fetch_api_error(self, coingecko_service):
         """Test fetch when API returns error status."""
@@ -330,6 +337,7 @@ class TestMarketDataServiceWithCoinGecko:
         # Verify prices are from CoinGecko (not mock)
         btc = next(r for r in result if r.symbol == "BTC")
         assert btc.price == 68000.0
+        assert btc.source == "coingecko"
 
     @pytest.mark.asyncio
     async def test_get_all_with_partial_coingecko_data(self):
@@ -368,13 +376,16 @@ class TestMarketDataServiceWithCoinGecko:
         # BTC and ETH should have real data
         btc = next(r for r in result if r.symbol == "BTC")
         assert btc.price == 68000.0
+        assert btc.source == "coingecko"
 
         eth = next(r for r in result if r.symbol == "ETH")
         assert eth.price == 3600.0
+        assert eth.source == "coingecko"
 
         # SOL should have mock data
         sol = next(r for r in result if r.symbol == "SOL")
         assert sol.price == 150.00  # Mock price
+        assert sol.source == "mock"
 
     @pytest.mark.asyncio
     async def test_get_all_with_coingecko_failure(self):
@@ -396,6 +407,8 @@ class TestMarketDataServiceWithCoinGecko:
         assert len(result) == 3
         # All should be mock data
         assert all(r.price in [67500.0, 3500.0, 150.0] for r in result)
+        # All should have source="mock"
+        assert all(r.source == "mock" for r in result)
 
     @pytest.mark.asyncio
     async def test_get_by_symbol_with_coingecko_data(self):
@@ -424,6 +437,7 @@ class TestMarketDataServiceWithCoinGecko:
         assert result is not None
         assert result.symbol == "BTC"
         assert result.price == 68000.0
+        assert result.source == "coingecko"
 
     @pytest.mark.asyncio
     async def test_get_by_symbol_with_fallback(self):
@@ -442,6 +456,7 @@ class TestMarketDataServiceWithCoinGecko:
         assert result is not None
         assert result.symbol == "BTC"
         assert result.price == 67500.0  # Mock price
+        assert result.source == "mock"
 
     @pytest.mark.asyncio
     async def test_get_by_symbol_invalid(self):

@@ -17,6 +17,7 @@ class MarketDataResponse(BaseModel):
         volume_24h: 24-hour trading volume in USD
         change_24h: 24-hour price change percentage
         timestamp: Data timestamp
+        source: Data source ("coingecko" or "mock")
     """
 
     id: Optional[int] = None
@@ -26,6 +27,7 @@ class MarketDataResponse(BaseModel):
     volume_24h: float = Field(..., description="24-hour trading volume in USD", examples=[25000000000])
     change_24h: float = Field(..., description="24-hour price change percentage", examples=[2.5])
     timestamp: datetime = Field(..., description="Data timestamp")
+    source: str = Field(default="coingecko", description="Data source", examples=["coingecko", "mock"])
 
     model_config = ConfigDict(
         json_schema_extra={

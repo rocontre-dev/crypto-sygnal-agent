@@ -5,6 +5,7 @@ import { getMarkets, getSignal, getAIExplanation } from '../services/api';
 import { CryptoCard } from '../components/CryptoCard';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
+import { UpdateStatusBar } from '../components/UpdateStatusBar';
 import type { MarketData } from '../types/market';
 import type { TradingSignal } from '../types/signal';
 import type { AIExplanation } from '../types/aiExplanation';
@@ -26,6 +27,7 @@ export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [marketDataList, setMarketDataList] = useState<MarketData[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -35,6 +37,7 @@ export function Dashboard() {
       // Fetch all market data
       const marketsResponse = await getMarkets();
       const marketDataMap: { [symbol: string]: MarketData } = {};
+      setMarketDataList(marketsResponse.data);
       for (const item of marketsResponse.data) {
         marketDataMap[item.symbol] = item;
       }
@@ -102,6 +105,8 @@ export function Dashboard() {
           🔄 Actualizar análisis
         </button>
       </header>
+
+      <UpdateStatusBar marketData={marketDataList} />
 
       <div className="cards-grid">
         {SUPPORTED_SYMBOLS.map((symbol) => {

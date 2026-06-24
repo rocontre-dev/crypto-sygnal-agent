@@ -130,6 +130,7 @@ class CoinGeckoService:
                         coin.get("price_change_percentage_24h", 0) or 0
                     ),
                     "last_updated": last_updated or datetime.now(timezone.utc),
+                    "source": "coingecko",
                 }
 
             except (TypeError, ValueError) as e:

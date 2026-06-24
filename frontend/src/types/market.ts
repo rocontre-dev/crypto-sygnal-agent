@@ -8,6 +8,7 @@ export interface MarketData {
   volume_24h: number;
   change_24h: number;
   timestamp: string;
+  source: "coingecko" | "mock";
 }
 
 export interface MarketDataListResponse {

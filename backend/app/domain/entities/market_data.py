@@ -23,6 +23,7 @@ class MarketDataEntity:
         volume_24h: Trading volume in the last 24 hours in USD
         change_24h: Price change percentage in the last 24 hours
         timestamp: When this data was recorded
+        source: Data source ("coingecko" or "mock")
     """
 
     symbol: CryptoSymbol
@@ -32,6 +33,7 @@ class MarketDataEntity:
     change_24h: Decimal
     timestamp: datetime
     id: Optional[int] = None
+    source: str = "coingecko"
 
     @property
     def symbol_str(self) -> str:
