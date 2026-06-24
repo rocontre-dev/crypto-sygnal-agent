@@ -4,6 +4,73 @@
   min-height: 100vh;
   background-color: #f1f5f9;
   padding: 2rem;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.dashboard--ready {
+  opacity: 1;
+}
+
+/* Loading overlay styles */
+.dashboard-loading {
+  min-height: 100vh;
+  background-color: #f1f5f9;
+}
+
+.dashboard-loading__overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* CSS-only spinner */
+.dashboard-loading__spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 2rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.dashboard-loading__title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dashboard-loading__subtitle {
+  margin: 0;
+  font-size: 1rem;
+  color: #64748b;
+}
+
+.dashboard-loading__slow-message {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 0.5rem;
+  color: #92400e;
+  font-size: 0.95rem;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .dashboard-header {
@@ -28,6 +95,22 @@
   margin: 0.25rem 0 0 0;
   font-size: 0.95rem;
   color: #64748b;
+}
+
+.refreshing-indicator {
+  color: #3b82f6;
+  font-weight: 500;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.refresh-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .refresh-button {
@@ -82,6 +165,13 @@
   margin: 0;
   font-size: 0.85rem;
   color: #64748b;
+}
+
+.dashboard__error-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
 }
 
 @media (max-width: 768px) {

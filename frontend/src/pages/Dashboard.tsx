@@ -1,50 +1,247 @@
-/** Main dashboard page - optimized with single API call. */
+/** Main dashboard page - optimized with single API call and improved loading. */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getDashboard } from '../services/api';
 import { CryptoCard } from '../components/CryptoCard';
-import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { UpdateStatusBar } from '../components/UpdateStatusBar';
 import type { DashboardResponse, DashboardItem, MarketData } from '../types/market';
 import './Dashboard.css';
 
 const SUPPORTED_SYMBOLS = ['BTC', 'ETH', 'SOL'];
+const SLOW_LOADING_THRESHOLD_MS = 8000;
+const MAX_RETRY_ATTEMPTS = 15; // Retry for up to 30 seconds (15 * 2s)
+const RETRY_DELAY_MS = 2000; // 2 seconds between retries
+const AUTO_REFRESH_INTERVAL_MS = 30000; // Auto-refresh every 30 seconds
 
 export function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSlowMessage, setShowSlowMessage] = useState(false);
+  const [dashboardReady, setDashboardReady] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const slowMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await getDashboard();
-      setDashboardData(response);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+  // Check if all required symbols are present in dashboard items
+  const hasAllSymbols = useCallback((data: DashboardResponse | null): boolean => {
+    if (!data || !data.items || data.items.length === 0) return false;
+    const symbols = data.items.map((item) => item.market_data.symbol);
+    return SUPPORTED_SYMBOLS.every((s) => symbols.includes(s));
   }, []);
 
+  const loadData = useCallback(async () => {
+    // If we already have data, show refreshing state instead of full loading
+    if (dashboardData) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+    setShowSlowMessage(false);
+    // Don't reset dashboardReady if we already have data (for smooth refresh)
+    if (!dashboardData) {
+      setDashboardReady(false);
+    }
+    setRetryCount(0);
+
+    // Clear any existing timers
+    if (slowMessageTimerRef.current) {
+      clearTimeout(slowMessageTimerRef.current);
+    }
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+    }
+
+    // Set timer for slow loading message
+    slowMessageTimerRef.current = setTimeout(() => {
+      setShowSlowMessage(true);
+    }, SLOW_LOADING_THRESHOLD_MS);
+
+    // Internal function to attempt loading
+    const attemptLoad = async (attempt: number): Promise<boolean> => {
+      try {
+        const response = await getDashboard();
+        
+        // Clear retry timer
+        if (retryTimerRef.current) {
+          clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = null;
+        }
+
+        setDashboardData(response);
+
+        // Only show dashboard when all symbols are present
+        if (hasAllSymbols(response)) {
+          setDashboardReady(true);
+        } else {
+          setError('Datos incompletos recibidos del backend.');
+        }
+        
+        // Clear loading state on success or non-retryable error
+        setLoading(false);
+        setRefreshing(false);
+        if (slowMessageTimerRef.current) {
+          clearTimeout(slowMessageTimerRef.current);
+          slowMessageTimerRef.current = null;
+        }
+        return true; // Done
+        
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+        
+        // Check if it's a network error (backend unavailable)
+        // Match various network error patterns
+        const isNetworkError = 
+          errorMessage.toLowerCase().includes('fetch') ||
+          errorMessage.toLowerCase().includes('network') ||
+          errorMessage.toLowerCase().includes('conn') || // connection, connect, etc.
+          errorMessage.toLowerCase().includes('err_network') ||
+          errorMessage === 'Error desconocido';
+        
+        if (isNetworkError && attempt < MAX_RETRY_ATTEMPTS) {
+          // Schedule retry
+          retryTimerRef.current = setTimeout(() => {
+            attemptLoad(attempt + 1);
+          }, RETRY_DELAY_MS);
+          return false; // Still trying
+        } else if (isNetworkError) {
+          // Max retries reached, show error
+          setError('No se pudo conectar con el backend. Verifica que FastAPI esté corriendo en http://localhost:8000.');
+          setLoading(false);
+          setRefreshing(false);
+          if (slowMessageTimerRef.current) {
+            clearTimeout(slowMessageTimerRef.current);
+            slowMessageTimerRef.current = null;
+          }
+          return true; // Done
+        } else {
+          // Non-network error, show immediately
+          setError(errorMessage);
+          setLoading(false);
+          setRefreshing(false);
+          if (slowMessageTimerRef.current) {
+            clearTimeout(slowMessageTimerRef.current);
+            slowMessageTimerRef.current = null;
+          }
+          return true; // Done
+        }
+      }
+    };
+
+    // Start loading
+    await attemptLoad(0);
+  }, [hasAllSymbols]);
+
+  // Effect to set up auto-refresh when dashboard is ready
+  useEffect(() => {
+    if (dashboardReady && !loading && !error) {
+      // Clear any existing timer
+      if (autoRefreshTimerRef.current) {
+        clearInterval(autoRefreshTimerRef.current);
+      }
+
+      // Set up auto-refresh
+      autoRefreshTimerRef.current = setInterval(() => {
+        loadData();
+      }, AUTO_REFRESH_INTERVAL_MS);
+    }
+
+    return () => {
+      if (autoRefreshTimerRef.current) {
+        clearInterval(autoRefreshTimerRef.current);
+      }
+    };
+  }, [dashboardReady, loading, error, loadData]);
+
+  // Effect to handle timer cleanup when loading state changes
+  useEffect(() => {
+    if (!loading) {
+      if (slowMessageTimerRef.current) {
+        clearTimeout(slowMessageTimerRef.current);
+        slowMessageTimerRef.current = null;
+      }
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      setShowSlowMessage(false);
+    }
+  }, [loading]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (slowMessageTimerRef.current) {
+        clearTimeout(slowMessageTimerRef.current);
+      }
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+      if (autoRefreshTimerRef.current) {
+        clearInterval(autoRefreshTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Initial load
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   if (loading) {
-    return <LoadingState message="Cargando análisis de mercado..." />;
+    return (
+      <div className="dashboard-loading">
+        <div className="dashboard-loading__overlay">
+          <div className="dashboard-loading__spinner"></div>
+          <h2 className="dashboard-loading__title">Preparando análisis de mercado...</h2>
+          <p className="dashboard-loading__subtitle">Conectando con el backend y cargando datos actualizados.</p>
+          {showSlowMessage && (
+            <p className="dashboard-loading__slow-message">
+              El análisis está tardando más de lo normal.
+            </p>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <ErrorState message={error} onRetry={loadData} />;
+    return (
+      <div className="dashboard">
+        <header className="dashboard-header">
+          <div className="header-content">
+            <h1>📈 CryptoSignalAgent</h1>
+            <p className="subtitle">Dashboard de Señales de Trading</p>
+          </div>
+          <button className="refresh-button" onClick={loadData}>
+            🔄 Reintentar
+          </button>
+        </header>
+        <div className="dashboard__error-container">
+          <ErrorState message={error} onRetry={loadData} />
+        </div>
+      </div>
+    );
   }
 
-  if (!dashboardData) {
-    return <ErrorState message="No hay datos disponibles." onRetry={loadData} />;
+  if (!dashboardData || !dashboardReady) {
+    return (
+      <div className="dashboard">
+        <header className="dashboard-header">
+          <div className="header-content">
+            <h1>📈 CryptoSignalAgent</h1>
+            <p className="subtitle">Dashboard de Señales de Trading</p>
+          </div>
+        </header>
+        <div className="dashboard__error-container">
+          <ErrorState message="No hay datos disponibles." onRetry={loadData} />
+        </div>
+      </div>
+    );
   }
 
   // Convert dashboard items to the format expected by CryptoCard
@@ -72,14 +269,17 @@ export function Dashboard() {
   }));
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard ${dashboardReady ? 'dashboard--ready' : ''}`}>
       <header className="dashboard-header">
         <div className="header-content">
           <h1>📈 CryptoSignalAgent</h1>
-          <p className="subtitle">Dashboard de Señales de Trading</p>
+          <p className="subtitle">
+            Dashboard de Señales de Trading
+            {refreshing && <span className="refreshing-indicator"> • Actualizando...</span>}
+          </p>
         </div>
-        <button className="refresh-button" onClick={loadData}>
-          🔄 Actualizar análisis
+        <button className="refresh-button" onClick={loadData} disabled={refreshing}>
+          {refreshing ? '⏳ Actualizando...' : '🔄 Actualizar análisis'}
         </button>
       </header>
 
