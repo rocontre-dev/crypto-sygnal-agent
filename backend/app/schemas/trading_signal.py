@@ -26,8 +26,8 @@ class TradingSignalResponse(BaseModel):
     confidence_score: float = Field(..., description="Signal confidence (0-100)", examples=[75.0])
     risk_level: str = Field(..., description="Risk level", examples=["MEDIUM"])
     reason: str = Field(..., description="Detailed explanation in Spanish")
-    stop_loss: float = Field(..., description="Suggested stop-loss price")
-    take_profit: float = Field(..., description="Suggested take-profit price")
+    stop_loss: Optional[float] = Field(default=None, description="Suggested stop-loss price (null for WAIT/EXIT/REDUCE)")
+    take_profit: Optional[float] = Field(default=None, description="Suggested take-profit price (null for WAIT/EXIT/REDUCE)")
     invalidation_condition: str = Field(..., description="Invalidation condition in Spanish")
     timestamp: datetime = Field(..., description="Signal generation timestamp")
 

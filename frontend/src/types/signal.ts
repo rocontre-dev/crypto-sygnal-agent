@@ -9,8 +9,8 @@ export interface TradingSignal {
   confidence_score: number;
   risk_level: RiskLevel;
   reason: string;
-  stop_loss: number;
-  take_profit: number;
+  stop_loss: number | null;
+  take_profit: number | null;
   invalidation_condition: string;
   timestamp: string;
 }

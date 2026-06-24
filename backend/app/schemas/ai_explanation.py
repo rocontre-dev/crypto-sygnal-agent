@@ -1,6 +1,7 @@
 """AI explanation Pydantic schemas."""
 
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -37,8 +38,8 @@ class AIExplanationResponse(BaseModel):
     signal: str = Field(..., description="Trading signal type")
     confidence_score: float = Field(..., description="Signal confidence (0-100)")
     risk_level: str = Field(..., description="Risk level")
-    stop_loss: float = Field(..., description="Suggested stop-loss price")
-    take_profit: float = Field(..., description="Suggested take-profit price")
+    stop_loss: Optional[float] = Field(default=None, description="Suggested stop-loss price (null for WAIT/EXIT/REDUCE)")
+    take_profit: Optional[float] = Field(default=None, description="Suggested take-profit price (null for WAIT/EXIT/REDUCE)")
     invalidation_condition: str = Field(..., description="Invalidation condition from SignalEngineService")
     technical_summary: str = Field(..., description="Technical analysis summary in Spanish")
     plain_spanish_explanation: str = Field(..., description="Clear explanation in simple Spanish")

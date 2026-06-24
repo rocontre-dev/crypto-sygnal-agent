@@ -295,12 +295,12 @@ All error responses follow this format:
 
 ## Market History
 
-Get historical OHLC (Open, High, Low, Close) data for cryptocurrencies.
+Get historical OHLCV (Open, High, Low, Close, Volume) data for cryptocurrencies.
 
 **Endpoint:** `GET /api/v1/history/{symbol}`
 
 **Query Parameters:**
-- `timeframe` - Candle timeframe (default: `1d`). Currently only `1d` is supported.
+- `timeframe` - Candle timeframe (default: `1d`). Supported values: `1d`, `4h`.
 
 **Response:**
 ```json
@@ -308,8 +308,8 @@ Get historical OHLC (Open, High, Low, Close) data for cryptocurrencies.
   "symbol": "BTC",
   "timeframe": "1d",
   "count": 365,
-  "volume_available": false,
-  "source": "coingecko_ohlc",
+  "volume_available": true,
+  "source": "binance_klines",
   "candles": [
     {
       "timestamp": "2024-01-15T00:00:00Z",
@@ -317,7 +317,7 @@ Get historical OHLC (Open, High, Low, Close) data for cryptocurrencies.
       "high": 43200.00,
       "low": 42100.00,
       "close": 42800.00,
-      "volume": null
+      "volume": 15234.56
     }
   ]
 }
@@ -325,20 +325,28 @@ Get historical OHLC (Open, High, Low, Close) data for cryptocurrencies.
 
 **Status Codes:**
 - `200 OK` - Successfully retrieved historical data
-- `400 Bad Request` - Invalid or unsupported timeframe (e.g., `4h`, `1h`)
+- `400 Bad Request` - Invalid or unsupported timeframe (e.g., `1h`, `1w`)
 - `404 Not Found` - Symbol not found (e.g., `INVALID`)
 - `503 Service Unavailable` - Unable to fetch data and no cache available
 
 **Data Source:**
-- Primary: CoinGecko OHLC API v3
+- Primary: Binance Public Klines API
 - Fallback: Cached data when API is unavailable
 
+**Notes:**
+- Uses Binance public market data only
+- No API key required
+- No trading execution or order placement
+- Real trading volume is included
+
+**Supported Timeframes:**
+- `1d` (daily): Last 365 candles
+- `4h` (4-hour): Last 500 candles
+
 **Known Limitations:**
-- **No Volume Data**: CoinGecko's free OHLC endpoint provides open, high, low, close prices but does NOT provide trading volume. The `volume` field is always `null` and `volume_available` is always `false`.
-- **1d Timeframe Only**: The 4h (4-hour) timeframe is not available from CoinGecko's free OHLC endpoint. Support for 4h may require integration with Binance, Coinbase, or another OHLCV provider in the future.
-- **Rate Limits**: CoinGecko free API has strict rate limits (~10-50 calls/minute). When rate limit is exceeded (HTTP 429), the service returns cached data if available, or a 503 error if no cache exists. The service uses caching (default TTL: 3600 seconds) to minimize API calls.
-  - **Recommendation**: For production use with higher traffic, consider upgrading to CoinGecko's paid API or implementing a longer cache TTL via `MARKET_HISTORY_CACHE_TTL_SECONDS` environment variable.
-- **Historical Depth**: CoinGecko provides up to 365 days of daily OHLC data for supported cryptocurrencies.
+- **Rate Limits**: Binance API has rate limits. When rate limit is exceeded (HTTP 429), the service returns cached data if available, or a 503 error if no cache exists. The service uses caching (default TTL: 3600 seconds) to minimize API calls.
+- **Regional Restrictions**: Some regions may have restricted access to Binance API (HTTP 451). In such cases, cached data is used if available.
+- **Historical Depth**: Binance provides up to 500 candles for 4h timeframe and up to 365 days for 1d timeframe.
 
 ## CORS
 

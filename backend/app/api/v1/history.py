@@ -13,16 +13,14 @@ router = APIRouter(prefix="/history", tags=["History"])
 @router.get(
     "/{symbol}",
     response_model=MarketHistoryResponse,
-    summary="Get historical OHLC data",
+    summary="Get historical OHLCV data",
     description=(
-        "Returns historical OHLC (Open, High, Low, Close) data for a specific cryptocurrency. "
-        "Data is fetched from CoinGecko API and cached for improved performance.\n\n"
-        "**Note:** CoinGecko's free OHLC endpoint does not provide volume data. "
-        "The volume field is always null and volume_available is false.\n\n"
+        "Returns historical OHLCV (Open, High, Low, Close, Volume) data for a specific cryptocurrency. "
+        "Data is fetched from Binance public klines API and cached for improved performance.\n\n"
+        "**Note:** This endpoint uses Binance public market data only. No API key is required.\n\n"
         "**Supported timeframes:**\n"
-        "- `1d` (daily): Last 365 days\n\n"
-        "**Pending timeframes:**\n"
-        "- `4h` (4-hour): Not yet available. Requires Binance, Coinbase, or another OHLCV provider."
+        "- `1d` (daily): Last 365 candles\n"
+        "- `4h` (4-hour): Last 500 candles"
     ),
     responses={
         200: {"description": "Successfully retrieved historical data"},
@@ -35,7 +33,7 @@ async def get_history(
     symbol: str,
     timeframe: str = Query(
         default="1d",
-        description="Candle timeframe. Currently only '1d' is supported. Use '4h' for 4-hour candles (not yet available).",
+        description="Candle timeframe. Supported values: '1d' (daily), '4h' (4-hour).",
         examples=["1d"],
     ),
     service: MarketHistoryService = Depends(),
@@ -69,10 +67,8 @@ async def get_history(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Timeframe '{timeframe}' is not available from CoinGecko OHLC "
-                f"free endpoint yet. Supported timeframes: {', '.join(sorted(service.SUPPORTED_TIMEFRAMES))}. "
-                f"4h timeframe support is pending and may require Binance, Coinbase, "
-                f"or another OHLCV provider."
+                f"Timeframe '{timeframe}' is not supported. "
+                f"Supported timeframes: {', '.join(sorted(service.SUPPORTED_TIMEFRAMES))}"
             ),
         )
 

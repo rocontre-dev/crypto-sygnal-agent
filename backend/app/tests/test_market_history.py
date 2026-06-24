@@ -7,9 +7,9 @@ from app.services.market_history_service import MarketHistoryService
 
 
 @pytest.mark.asyncio
-async def test_get_history_btc(client: AsyncClient):
-    """Test getting BTC historical data."""
-    response = await client.get("/api/v1/history/BTC")
+async def test_get_history_btc_1d(client: AsyncClient):
+    """Test getting BTC historical data with 1d timeframe."""
+    response = await client.get("/api/v1/history/BTC?timeframe=1d")
     assert response.status_code == 200
     data = response.json()
 
@@ -24,8 +24,8 @@ async def test_get_history_btc(client: AsyncClient):
     # Check values
     assert data["symbol"] == "BTC"
     assert data["timeframe"] == "1d"
-    assert data["volume_available"] is False
-    assert data["source"] == "coingecko_ohlc"
+    assert data["volume_available"] is True
+    assert data["source"] == "binance_klines"
     assert isinstance(data["candles"], list)
     assert data["count"] == len(data["candles"])
 
@@ -38,46 +38,55 @@ async def test_get_history_btc(client: AsyncClient):
         assert "low" in candle
         assert "close" in candle
         assert "volume" in candle
-        assert candle["volume"] is None  # Volume is always null
+        assert candle["volume"] is not None  # Volume should NOT be null
+        assert isinstance(candle["volume"], (int, float))
 
 
 @pytest.mark.asyncio
-async def test_get_history_eth(client: AsyncClient):
+async def test_get_history_btc_4h(client: AsyncClient):
+    """Test getting BTC historical data with 4h timeframe."""
+    response = await client.get("/api/v1/history/BTC?timeframe=4h")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["symbol"] == "BTC"
+    assert data["timeframe"] == "4h"
+    assert data["volume_available"] is True
+    assert data["source"] == "binance_klines"
+    assert isinstance(data["candles"], list)
+
+    # Check that volume is not null
+    if data["count"] > 0:
+        candle = data["candles"][0]
+        assert candle["volume"] is not None
+
+
+@pytest.mark.asyncio
+async def test_get_history_eth_1d(client: AsyncClient):
     """Test getting ETH historical data."""
-    response = await client.get("/api/v1/history/ETH")
+    response = await client.get("/api/v1/history/ETH?timeframe=1d")
     assert response.status_code == 200
     data = response.json()
 
     assert data["symbol"] == "ETH"
     assert data["timeframe"] == "1d"
-    assert data["volume_available"] is False
-    assert data["source"] == "coingecko_ohlc"
+    assert data["volume_available"] is True
+    assert data["source"] == "binance_klines"
     assert isinstance(data["candles"], list)
 
 
 @pytest.mark.asyncio
-async def test_get_history_sol(client: AsyncClient):
-    """Test getting SOL historical data."""
-    response = await client.get("/api/v1/history/SOL")
+async def test_get_history_sol_4h(client: AsyncClient):
+    """Test getting SOL historical data with 4h timeframe."""
+    response = await client.get("/api/v1/history/SOL?timeframe=4h")
     assert response.status_code == 200
     data = response.json()
 
     assert data["symbol"] == "SOL"
-    assert data["timeframe"] == "1d"
-    assert data["volume_available"] is False
-    assert data["source"] == "coingecko_ohlc"
+    assert data["timeframe"] == "4h"
+    assert data["volume_available"] is True
+    assert data["source"] == "binance_klines"
     assert isinstance(data["candles"], list)
-
-
-@pytest.mark.asyncio
-async def test_get_history_with_explicit_timeframe(client: AsyncClient):
-    """Test getting history with explicit 1d timeframe parameter."""
-    response = await client.get("/api/v1/history/BTC?timeframe=1d")
-    assert response.status_code == 200
-    data = response.json()
-
-    assert data["symbol"] == "BTC"
-    assert data["timeframe"] == "1d"
 
 
 @pytest.mark.asyncio
@@ -91,30 +100,19 @@ async def test_get_history_invalid_symbol(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_history_invalid_timeframe_4h(client: AsyncClient):
-    """Test getting history with 4h timeframe returns 400 with clear message."""
-    response = await client.get("/api/v1/history/BTC?timeframe=4h")
-    assert response.status_code == 400
-    data = response.json()
-    assert "detail" in data
-    detail = data["detail"].lower()
-    # Check for informative message about 4h not being available
-    assert "4h" in detail or "not available" in detail or "coingecko" in detail
-
-
-@pytest.mark.asyncio
-async def test_get_history_invalid_timeframe_other(client: AsyncClient):
+async def test_get_history_invalid_timeframe(client: AsyncClient):
     """Test getting history with unsupported timeframe returns 400."""
     response = await client.get("/api/v1/history/BTC?timeframe=1h")
     assert response.status_code == 400
     data = response.json()
     assert "detail" in data
+    assert "1h" in data["detail"] or "not supported" in data["detail"].lower()
 
 
 @pytest.mark.asyncio
 async def test_get_history_lowercase_symbol(client: AsyncClient):
     """Test getting history with lowercase symbol works."""
-    response = await client.get("/api/v1/history/btc")
+    response = await client.get("/api/v1/history/btc?timeframe=1d")
     assert response.status_code == 200
     data = response.json()
     assert data["symbol"] == "BTC"
@@ -123,7 +121,7 @@ async def test_get_history_lowercase_symbol(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_history_candle_ordering(client: AsyncClient):
     """Test that candles are ordered newest first."""
-    response = await client.get("/api/v1/history/BTC")
+    response = await client.get("/api/v1/history/BTC?timeframe=1d")
     assert response.status_code == 200
     data = response.json()
 
@@ -135,14 +133,24 @@ async def test_get_history_candle_ordering(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_history_volume_always_null(client: AsyncClient):
-    """Test that volume is always null for all candles."""
-    response = await client.get("/api/v1/history/BTC")
+async def test_get_history_volume_not_null(client: AsyncClient):
+    """Test that volume is not null for all candles."""
+    response = await client.get("/api/v1/history/BTC?timeframe=1d")
     assert response.status_code == 200
     data = response.json()
 
     for candle in data["candles"]:
-        assert candle["volume"] is None, "Volume should always be null"
+        assert candle["volume"] is not None, "Volume should not be null"
+        assert isinstance(candle["volume"], (int, float))
+
+
+@pytest.mark.asyncio
+async def test_get_history_default_timeframe(client: AsyncClient):
+    """Test that default timeframe is 1d."""
+    response = await client.get("/api/v1/history/BTC")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["timeframe"] == "1d"
 
 
 class TestMarketHistoryService:
@@ -165,23 +173,41 @@ class TestMarketHistoryService:
             service._validate_symbol("DOGE")
 
     def test_validate_timeframe_valid(self):
-        """Test timeframe validation with valid timeframe."""
+        """Test timeframe validation with valid timeframes."""
         service = MarketHistoryService()
         assert service._validate_timeframe("1d") == "1d"
+        assert service._validate_timeframe("4h") == "4h"
 
     def test_validate_timeframe_invalid(self):
         """Test timeframe validation with invalid timeframes."""
         service = MarketHistoryService()
-        with pytest.raises(ValueError, match="not available"):
-            service._validate_timeframe("4h")
-        with pytest.raises(ValueError, match="not available"):
+        with pytest.raises(ValueError, match="not supported"):
             service._validate_timeframe("1h")
-        with pytest.raises(ValueError, match="not available"):
+        with pytest.raises(ValueError, match="not supported"):
             service._validate_timeframe("1w")
+
+    def test_binance_symbol_mapping(self):
+        """Test Binance symbol mapping."""
+        service = MarketHistoryService()
+        assert service.BINANCE_SYMBOL_MAP["BTC"] == "BTCUSDT"
+        assert service.BINANCE_SYMBOL_MAP["ETH"] == "ETHUSDT"
+        assert service.BINANCE_SYMBOL_MAP["SOL"] == "SOLUSDT"
+
+    def test_supported_timeframes(self):
+        """Test supported timeframes include 1d and 4h."""
+        service = MarketHistoryService()
+        assert "1d" in service.SUPPORTED_TIMEFRAMES
+        assert "4h" in service.SUPPORTED_TIMEFRAMES
+
+    def test_limit_map(self):
+        """Test limit map for timeframes."""
+        service = MarketHistoryService()
+        assert service.LIMIT_MAP["1d"] == 365
+        assert service.LIMIT_MAP["4h"] == 500
 
     def test_cache_operations(self):
         """Test cache get, set, and expiry."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timezone
         from app.domain.entities.market_history import OHLCCandle
         from app.domain.enums.crypto_symbol import CryptoSymbol
         from app.domain.enums.timeframe import Timeframe
@@ -189,13 +215,14 @@ class TestMarketHistoryService:
         service = MarketHistoryService(cache_ttl=1)
         now = datetime.now(timezone.utc)
 
-        # Create test candle
+        # Create test candle with volume
         test_candle = OHLCCandle(
             timestamp=now,
             open=50000,
             high=51000,
             low=49000,
             close=50500,
+            volume=1234.56,
             symbol=CryptoSymbol.BTC,
             timeframe=Timeframe.ONE_DAY,
         )
@@ -211,12 +238,13 @@ class TestMarketHistoryService:
         assert cached is not None
         assert len(cached) == 1
         assert cached[0].close == 50500
+        assert cached[0].volume == 1234.56
 
         # Check is_valid
         assert service.cache.is_valid("BTC", "1d") is True
 
-    def test_build_response(self):
-        """Test response building."""
+    def test_build_response_has_volume(self):
+        """Test response building includes volume."""
         from datetime import datetime, timezone
         from app.domain.entities.market_history import OHLCCandle
         from app.domain.enums.crypto_symbol import CryptoSymbol
@@ -232,6 +260,7 @@ class TestMarketHistoryService:
                 high=51000,
                 low=49000,
                 close=50500,
+                volume=1234.56,
                 symbol=CryptoSymbol.BTC,
                 timeframe=Timeframe.ONE_DAY,
             )
@@ -242,7 +271,13 @@ class TestMarketHistoryService:
         assert response.symbol == "BTC"
         assert response.timeframe == "1d"
         assert response.count == 1
-        assert response.volume_available is False
-        assert response.source == "coingecko_ohlc"
+        assert response.volume_available is True
+        assert response.source == "binance_klines"
         assert len(response.candles) == 1
-        assert response.candles[0].volume is None
+        assert response.candles[0].volume is not None
+        assert response.candles[0].volume == 1234.56
+
+    def test_base_url_is_binance(self):
+        """Test that base URL points to Binance."""
+        service = MarketHistoryService()
+        assert service.base_url == "https://api.binance.com/api/v3/klines"

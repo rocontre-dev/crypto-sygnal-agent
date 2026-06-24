@@ -82,14 +82,23 @@ export function CryptoCard({ marketData, signal, aiExplanation }: CryptoCardProp
       </div>
 
       <div className="crypto-card-levels">
-        <div className="level">
-          <span className="level-label">Stop Loss</span>
-          <span className="level-value stop-loss">{formatPrice(signal.stop_loss)}</span>
-        </div>
-        <div className="level">
-          <span className="level-label">Take Profit</span>
-          <span className="level-value take-profit">{formatPrice(signal.take_profit)}</span>
-        </div>
+        {signal.stop_loss !== null && signal.take_profit !== null ? (
+          <>
+            <div className="level">
+              <span className="level-label">Stop Loss</span>
+              <span className="level-value stop-loss">{formatPrice(signal.stop_loss)}</span>
+            </div>
+            <div className="level">
+              <span className="level-label">Take Profit</span>
+              <span className="level-value take-profit">{formatPrice(signal.take_profit)}</span>
+            </div>
+          </>
+        ) : (
+          <div className="level no-levels">
+            <span className="level-value">—</span>
+            <span className="level-note">No hay operación activa en este momento.</span>
+          </div>
+        )}
       </div>
 
       <div className="crypto-card-reason">

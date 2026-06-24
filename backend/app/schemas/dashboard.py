@@ -1,7 +1,7 @@
 """Dashboard Pydantic schemas."""
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -25,8 +25,8 @@ class DashboardSignal(BaseModel):
     signal: str = Field(..., description="Signal type (ENTER, WAIT, REDUCE, EXIT)")
     confidence_score: float = Field(..., description="Confidence score 0-100")
     risk_level: str = Field(..., description="Risk level (LOW, MEDIUM, HIGH)")
-    stop_loss: float = Field(..., description="Suggested stop loss price")
-    take_profit: float = Field(..., description="Suggested take profit price")
+    stop_loss: Optional[float] = Field(default=None, description="Suggested stop loss price (null for WAIT/EXIT/REDUCE)")
+    take_profit: Optional[float] = Field(default=None, description="Suggested take profit price (null for WAIT/EXIT/REDUCE)")
     timestamp: datetime = Field(..., description="Signal timestamp")
 
 

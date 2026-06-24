@@ -1,10 +1,10 @@
-"""Market history service for fetching and caching OHLC data."""
+"""Market history service for fetching and caching OHLCV data from Binance."""
 
 import logging
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -28,7 +28,7 @@ class MarketHistoryCache:
             ttl_seconds: Time-to-live in seconds for cached data
         """
         self.ttl_seconds = ttl_seconds
-        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._cache: Dict[str, List[OHLCCandle]] = {}
         self._cached_at: Dict[str, datetime] = {}
 
     def _make_key(self, symbol: str, timeframe: str) -> str:
@@ -91,40 +91,45 @@ class MarketHistoryCache:
 
 
 class MarketHistoryService:
-    """Service for fetching and managing historical OHLC market data.
+    """Service for fetching and managing historical OHLCV market data from Binance.
 
-    This service fetches real historical OHLC data from CoinGecko API
+    This service fetches real historical OHLCV data from Binance public klines API
     with caching support and graceful fallback to cached data.
 
-    Note: CoinGecko's free OHLC endpoint provides open, high, low, close
-    prices but does NOT provide volume data. Volume is always None.
+    Note: This service uses ONLY public market data from Binance.
+    No API key is required. No trading execution or order placement.
 
     Supported timeframes:
-    - 1d (daily): Last 365 days
-
-    Pending timeframes:
-    - 4h (4-hour): Requires alternative data provider (Binance, Coinbase, etc.)
+    - 1d (daily): Last 365 candles
+    - 4h (4-hour): Last 500 candles
     """
 
-    # CoinGecko API base URL
-    BASE_URL = "https://api.coingecko.com/api/v3"
+    # Binance API base URL for public klines
+    BASE_URL = "https://api.binance.com/api/v3/klines"
 
-    # Mapping from our symbols to CoinGecko coin IDs
-    COIN_ID_MAP: Dict[str, str] = {
-        "BTC": "bitcoin",
-        "ETH": "ethereum",
-        "SOL": "solana",
+    # Mapping from our symbols to Binance symbols
+    BINANCE_SYMBOL_MAP: Dict[str, str] = {
+        "BTC": "BTCUSDT",
+        "ETH": "ETHUSDT",
+        "SOL": "SOLUSDT",
     }
 
     # Supported symbols
     SUPPORTED_SYMBOLS = {"BTC", "ETH", "SOL"}
 
-    # Supported timeframes (only 1d for now)
-    SUPPORTED_TIMEFRAMES = {"1d"}
+    # Supported timeframes (Binance intervals)
+    SUPPORTED_TIMEFRAMES = {"1d", "4h"}
 
-    # Days to fetch for each timeframe
-    DAYS_MAP: Dict[str, int] = {
+    # Binance interval mapping
+    BINANCE_INTERVAL_MAP: Dict[str, str] = {
+        "1d": "1d",
+        "4h": "4h",
+    }
+
+    # Limit for each timeframe
+    LIMIT_MAP: Dict[str, int] = {
         "1d": 365,
+        "4h": 500,
     }
 
     def __init__(
@@ -136,7 +141,7 @@ class MarketHistoryService:
         """Initialize market history service.
 
         Args:
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (default: 10.0)
             cache_ttl: Cache TTL in seconds (default from settings)
             base_url: Override base URL for testing purposes
         """
@@ -180,20 +185,36 @@ class MarketHistoryService:
         """
         if timeframe not in self.SUPPORTED_TIMEFRAMES:
             raise ValueError(
-                f"Timeframe '{timeframe}' is not available from CoinGecko OHLC "
-                f"free endpoint yet. Supported timeframes: {', '.join(sorted(self.SUPPORTED_TIMEFRAMES))}. "
-                f"4h timeframe support is pending and may require Binance, Coinbase, "
-                f"or another OHLCV provider."
+                f"Timeframe '{timeframe}' is not supported. "
+                f"Supported timeframes: {', '.join(sorted(self.SUPPORTED_TIMEFRAMES))}"
             )
         return timeframe
 
-    def _parse_ohlc_data(
+    def _parse_kline_data(
         self, data: List[List[Any]], symbol: CryptoSymbol, timeframe: Timeframe
     ) -> List[OHLCCandle]:
-        """Parse CoinGecko OHLC response into candle entities.
+        """Parse Binance kline response into candle entities.
+
+        Binance kline format:
+        [
+          [
+            openTime,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            closeTime,
+            quoteAssetVolume,
+            numberOfTrades,
+            takerBuyBaseAssetVolume,
+            takerBuyQuoteAssetVolume,
+            ignore
+          ]
+        ]
 
         Args:
-            data: Raw OHLC data from CoinGecko API
+            data: Raw kline data from Binance API
             symbol: Cryptocurrency symbol
             timeframe: Candle timeframe
 
@@ -201,30 +222,30 @@ class MarketHistoryService:
             List of OHLCCandle entities
         """
         candles = []
-        for ohlc in data:
-            if len(ohlc) < 5:
+        for kline in data:
+            if len(kline) < 6:
                 continue
 
             try:
-                # CoinGecko returns: [timestamp_ms, open, high, low, close]
-                timestamp_ms = ohlc[0]
+                # Binance returns openTime in milliseconds
+                open_time_ms = kline[0]
                 timestamp = datetime.fromtimestamp(
-                    timestamp_ms / 1000, tz=timezone.utc
+                    open_time_ms / 1000, tz=timezone.utc
                 )
 
                 candle = OHLCCandle(
                     timestamp=timestamp,
-                    open=Decimal(str(ohlc[1])),
-                    high=Decimal(str(ohlc[2])),
-                    low=Decimal(str(ohlc[3])),
-                    close=Decimal(str(ohlc[4])),
+                    open=Decimal(str(kline[1])),
+                    high=Decimal(str(kline[2])),
+                    low=Decimal(str(kline[3])),
+                    close=Decimal(str(kline[4])),
+                    volume=Decimal(str(kline[5])),
                     symbol=symbol,
                     timeframe=timeframe,
-                    volume=None,  # CoinGecko OHLC does not provide volume
                 )
                 candles.append(candle)
             except (TypeError, ValueError, IndexError) as e:
-                logger.warning(f"Error parsing OHLC data point: {e}")
+                logger.warning(f"Error parsing kline data point: {e}")
                 continue
 
         return candles
@@ -235,19 +256,19 @@ class MarketHistoryService:
         timeframe: str = "1d",
         use_cache: bool = True,
     ) -> MarketHistoryResponse:
-        """Fetch historical OHLC data for a cryptocurrency.
+        """Fetch historical OHLCV data for a cryptocurrency.
 
-        This method fetches real historical data from CoinGecko API.
+        This method fetches real historical data from Binance public klines API.
         It uses caching to reduce API calls and provides graceful
         fallback to cached data if the API is unavailable.
 
         Args:
             symbol: Cryptocurrency symbol (BTC, ETH, SOL)
-            timeframe: Candle timeframe (currently only "1d" supported)
+            timeframe: Candle timeframe ("1d" or "4h")
             use_cache: Whether to use cached data when available
 
         Returns:
-            MarketHistoryResponse containing OHLC candles
+            MarketHistoryResponse containing OHLCV candles
 
         Raises:
             ValueError: If symbol or timeframe is not supported
@@ -271,9 +292,9 @@ class MarketHistoryService:
 
         logger.info(f"Cache miss for {symbol_upper}/{validated_timeframe}")
 
-        # Fetch from CoinGecko
+        # Fetch from Binance
         start_time = time.time()
-        candles = await self._fetch_from_coingecko(symbol_upper, timeframe_enum)
+        candles = await self._fetch_from_binance(symbol_upper, timeframe_enum)
 
         if candles:
             fetch_time = time.time() - start_time
@@ -301,10 +322,10 @@ class MarketHistoryService:
             f"No cached data available."
         )
 
-    async def _fetch_from_coingecko(
+    async def _fetch_from_binance(
         self, symbol: str, timeframe: Timeframe
     ) -> List[OHLCCandle]:
-        """Fetch OHLC data from CoinGecko API.
+        """Fetch kline data from Binance public API.
 
         Args:
             symbol: Cryptocurrency symbol (already validated)
@@ -313,88 +334,108 @@ class MarketHistoryService:
         Returns:
             List of OHLCCandle entities, or empty list on failure
         """
-        coin_id = self.COIN_ID_MAP.get(symbol)
-        if not coin_id:
-            logger.error(f"No CoinGecko coin ID mapping for symbol: {symbol}")
+        binance_symbol = self.BINANCE_SYMBOL_MAP.get(symbol)
+        if not binance_symbol:
+            logger.error(f"No Binance symbol mapping for: {symbol}")
             return []
 
-        days = self.DAYS_MAP.get(timeframe.value, 365)
-        
-        # Build the full URL for debugging
-        url = f"{self.base_url}/coins/{coin_id}/ohlc"
-        params = {"vs_currency": "usd", "days": days}
-        
-        logger.debug(f"Fetching OHLC from CoinGecko: URL={url}, params={params}, timeout={self.timeout}s")
+        interval = self.BINANCE_INTERVAL_MAP.get(timeframe.value)
+        limit = self.LIMIT_MAP.get(timeframe.value, 500)
+
+        url = self.base_url
+        params = {
+            "symbol": binance_symbol,
+            "interval": interval,
+            "limit": limit,
+        }
+
+        logger.debug(
+            f"Fetching klines from Binance: URL={url}, "
+            f"params={params}, timeout={self.timeout}s"
+        )
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 logger.debug(f"Sending GET request to {url}")
                 response = await client.get(url, params=params)
-                
-                logger.debug(f"CoinGecko response: status={response.status_code}, url={response.url}")
-                
+
+                logger.debug(
+                    f"Binance response: status={response.status_code}, "
+                    f"url={response.url}"
+                )
+
+                # Handle error status codes
                 if response.status_code != 200:
-                    # Log detailed warning with special handling for rate limits
-                    response_body = response.text[:200] if response.text else 'empty'
-                    if response.status_code == 429:
+                    response_body = response.text[:200] if response.text else "empty"
+
+                    # Specific handling for rate limit and access errors
+                    if response.status_code in [429, 451, 403]:
+                        status_messages = {
+                            429: "Rate limit exceeded",
+                            451: "Content unavailable in your region",
+                            403: "Access forbidden",
+                        }
+                        msg = status_messages.get(response.status_code, "Unknown error")
                         logger.warning(
-                            f"CoinGecko API RATE LIMIT EXCEEDED for {symbol}. "
-                            f"Status: 429. URL: {response.url}. "
-                            f"Message: {response_body}. "
-                            f"Consider increasing cache TTL or upgrading to CoinGecko paid API."
+                            f"Binance API error ({response.status_code}): {msg}. "
+                            f"Symbol: {symbol}, URL: {response.url}. "
+                            f"Response: {response_body}"
                         )
                     else:
                         logger.warning(
-                            f"CoinGecko API returned status {response.status_code} for {symbol}. "
-                            f"URL: {response.url}. Response body: {response_body}"
+                            f"Binance API returned status {response.status_code} "
+                            f"for {symbol}. URL: {response.url}. Response: {response_body}"
                         )
                     return []
 
                 # Log response size
                 content_length = len(response.text) if response.text else 0
                 logger.debug(f"Response body size: {content_length} bytes")
-                
+
                 try:
                     data = response.json()
                 except ValueError as e:
-                    logger.error(f"Failed to parse JSON response for {symbol}: {e}. Response: {response.text[:200]}")
+                    logger.error(
+                        f"Failed to parse JSON response for {symbol}: {e}. "
+                        f"Response: {response.text[:200]}"
+                    )
                     return []
-                
+
                 if not isinstance(data, list):
                     logger.warning(
-                        f"Unexpected response format for {symbol}: expected list, got {type(data).__name__}. "
+                        f"Unexpected response format for {symbol}: "
+                        f"expected list, got {type(data).__name__}. "
                         f"Response: {str(data)[:200]}"
                     )
                     return []
-                
+
                 if len(data) == 0:
-                    logger.warning(f"Empty OHLC data returned for {symbol}")
+                    logger.warning(f"Empty kline data returned for {symbol}")
                     return []
-                
-                logger.debug(f"Received {len(data)} OHLC data points for {symbol}")
+
+                logger.debug(f"Received {len(data)} kline data points for {symbol}")
 
                 symbol_enum = CryptoSymbol(symbol)
-                return self._parse_ohlc_data(data, symbol_enum, timeframe)
+                return self._parse_kline_data(data, symbol_enum, timeframe)
 
         except httpx.TimeoutException as e:
-            logger.error(f"CoinGecko API timeout for {symbol} after {self.timeout}s: {type(e).__name__}: {e}")
+            logger.error(
+                f"Binance API timeout for {symbol} after {self.timeout}s: "
+                f"{type(e).__name__}: {e}"
+            )
             return []
         except httpx.RequestError as e:
-            logger.error(f"CoinGecko API request error for {symbol}: {type(e).__name__}: {e}. URL: {url}")
+            logger.error(
+                f"Binance API request error for {symbol}: "
+                f"{type(e).__name__}: {e}. URL: {url}"
+            )
             return []
         except Exception as e:
-            logger.error(f"Unexpected error fetching history for {symbol}: {type(e).__name__}: {e}")
+            logger.error(
+                f"Unexpected error fetching history for {symbol}: "
+                f"{type(e).__name__}: {e}"
+            )
             return []
-
-    def log_debug_info(self):
-        """Log debug information about the service configuration.
-        
-        This method can be called to output current configuration for debugging.
-        """
-        logger.debug(f"MarketHistoryService config: base_url={self.base_url}, timeout={self.timeout}s, cache_ttl={self.cache.ttl_seconds}s")
-        logger.debug(f"Supported symbols: {self.SUPPORTED_SYMBOLS}")
-        logger.debug(f"Supported timeframes: {self.SUPPORTED_TIMEFRAMES}")
-        logger.debug(f"Coin ID mapping: {self.COIN_ID_MAP}")
 
     def _build_response(
         self, symbol: str, timeframe: str, candles: List[OHLCCandle]
@@ -416,7 +457,7 @@ class MarketHistoryService:
                 high=float(c.high),
                 low=float(c.low),
                 close=float(c.close),
-                volume=None,  # Always null for CoinGecko OHLC
+                volume=float(c.volume) if c.volume is not None else None,
             )
             for c in candles
         ]
@@ -428,7 +469,20 @@ class MarketHistoryService:
             symbol=symbol,
             timeframe=timeframe,
             count=len(candle_responses),
-            volume_available=False,
-            source="coingecko_ohlc",
+            volume_available=True,  # Binance provides real volume
+            source="binance_klines",
             candles=candle_responses,
         )
+
+    def log_debug_info(self):
+        """Log debug information about the service configuration.
+
+        This method can be called to output current configuration for debugging.
+        """
+        logger.debug(
+            f"MarketHistoryService config: base_url={self.base_url}, "
+            f"timeout={self.timeout}s, cache_ttl={self.cache.ttl_seconds}s"
+        )
+        logger.debug(f"Supported symbols: {self.SUPPORTED_SYMBOLS}")
+        logger.debug(f"Supported timeframes: {self.SUPPORTED_TIMEFRAMES}")
+        logger.debug(f"Binance symbol mapping: {self.BINANCE_SYMBOL_MAP}")

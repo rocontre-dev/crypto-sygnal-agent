@@ -104,8 +104,8 @@ class SignalEngineService:
             confidence_score=Decimal(str(round(confidence, 2))),
             risk_level=risk_level,
             reason=reason,
-            stop_loss=Decimal(str(round(stop_loss, 2))),
-            take_profit=Decimal(str(round(take_profit, 2))),
+            stop_loss=Decimal(str(round(stop_loss, 2))) if stop_loss is not None else None,
+            take_profit=Decimal(str(round(take_profit, 2))) if take_profit is not None else None,
             invalidation_condition=invalidation,
             timestamp=datetime.now(timezone.utc),
         )
@@ -191,23 +191,26 @@ class SignalEngineService:
             return RiskLevel.HIGH
 
     def _calculate_levels(self, signal, current_price, ema50, ema200):
-        """Calculate stop loss and take profit levels."""
+        """Calculate stop loss and take profit levels.
+
+        Returns:
+            Tuple of (stop_loss, take_profit) where values can be None.
+
+        Note:
+            - ENTER: Returns actual levels (stop_loss below entry, take_profit above)
+            - WAIT, EXIT, REDUCE: Returns (None, None) because:
+              - WAIT: No trade setup active
+              - EXIT: Exiting position, not entering new trade
+              - REDUCE: Requires active position model (not yet implemented)
+        """
         if signal == SignalType.ENTER:
             # Stop loss below entry, take profit above
             stop_loss = current_price * 0.97  # 3% below
             take_profit = current_price * 1.05  # 5% above
-        elif signal == SignalType.EXIT:
-            # Stop loss above exit, take profit below
-            stop_loss = current_price * 1.02  # 2% above
-            take_profit = current_price * 0.95  # 5% below
-        elif signal == SignalType.REDUCE:
-            stop_loss = current_price * 0.98  # 2% below
-            take_profit = current_price * 1.03  # 3% above
-        else:  # WAIT
-            stop_loss = current_price * 0.95  # 5% below
-            take_profit = current_price * 1.05  # 5% above
-
-        return stop_loss, take_profit
+            return stop_loss, take_profit
+        else:
+            # WAIT, EXIT, REDUCE: No levels until we have position tracking
+            return None, None
 
     def _generate_reason(self, signal, reasons, rsi, macd, percent_change):
         """Generate reason text in Spanish."""
@@ -257,5 +260,5 @@ class SignalEngineService:
             return f"Si el precio recupera EMA20 ({current_price:.2f}) y MACD se vuelve positivo."
         elif signal == SignalType.REDUCE:
             return f"Si el precio recupera EMA20 con volumen o RSI baja de 50."
-        else:
-            return "Esperar confirmación de ruptura de rango o cambio en tendencia."
+        else:  # WAIT
+            return "No aplica mientras la señal sea ESPERA."

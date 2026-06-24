@@ -35,10 +35,10 @@ class TradingSignalEntity:
     confidence_score: Decimal
     risk_level: RiskLevel
     reason: str
-    stop_loss: Decimal
-    take_profit: Decimal
     invalidation_condition: str
     timestamp: datetime
+    stop_loss: Optional[Decimal] = None
+    take_profit: Optional[Decimal] = None
     id: Optional[int] = None
 
     @property
