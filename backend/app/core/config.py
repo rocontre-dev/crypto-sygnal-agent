@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # Dashboard cache settings
     DASHBOARD_CACHE_TTL_SECONDS: int = 60
 
+    # Market history cache settings
+    MARKET_HISTORY_CACHE_TTL_SECONDS: int = 3600
+
     @property
     def database_url(self) -> str:
         """Get database URL."""
