@@ -98,7 +98,7 @@ class DashboardService:
         generation_time = (time.time() - start_time) * 1000
 
         # Determine overall source
-        overall_source = "coingecko"
+        overall_source = "binance_ticker"
         for item in items:
             if item.market_data.source == "mock":
                 overall_source = "mock"
@@ -270,7 +270,7 @@ class DashboardService:
                 volume_24h=market_data_response.volume_24h,
                 change_24h=market_data_response.change_24h,
                 timestamp=market_data_response.timestamp,
-                source="mock",
+                source=market_data_response.source,
             ),
             signal=DashboardSignal(
                 symbol=signal.symbol,

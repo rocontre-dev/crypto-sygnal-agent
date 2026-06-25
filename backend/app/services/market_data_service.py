@@ -9,7 +9,7 @@ from app.domain.entities.market_data import MarketDataEntity
 from app.domain.enums.crypto_symbol import CryptoSymbol
 from app.repositories.market_data_repository import MarketDataRepository
 from app.schemas.market_data import MarketDataResponse
-from app.services.coingecko_service import CoinGeckoService
+from app.services.binance_ticker_service import BinanceTickerService
 
 if TYPE_CHECKING:
     pass
@@ -21,50 +21,50 @@ class MarketDataService:
     """Service for market data business logic.
 
     Provides methods for retrieving and processing market data.
-    Uses real data from CoinGecko API with fallback to mock data.
+    Uses real data from Binance ticker API with fallback to mock data.
     """
 
     def __init__(
         self,
         repository: MarketDataRepository,
-        coingecko_service: Optional[CoinGeckoService] = None,
+        binance_ticker_service: Optional[BinanceTickerService] = None,
     ):
         """Initialize service with repository.
 
         Args:
             repository: Market data repository instance
-            coingecko_service: Optional CoinGecko service instance for real data
+            binance_ticker_service: Optional BinanceTickerService instance for real data
         """
         self.repository = repository
-        self.coingecko_service = coingecko_service or CoinGeckoService()
+        self.binance_ticker_service = binance_ticker_service or BinanceTickerService()
 
     async def get_all_market_data(self) -> List[MarketDataResponse]:
         """Get all market data.
 
-        Fetches real data from CoinGecko API. Falls back to mock data
-        for any symbols not returned by CoinGecko.
+        Fetches real data from Binance ticker API. Falls back to mock data
+        for any symbols not returned by Binance.
 
         Returns:
             List of market data responses for all supported symbols
         """
-        # Try to fetch real data from CoinGecko
-        coingecko_data = await self.coingecko_service.fetch_market_data()
-        missing_symbols = self.coingecko_service.get_missing_symbols(
-            coingecko_data
+        # Try to fetch real data from Binance
+        binance_data = await self.binance_ticker_service.fetch_ticker_data()
+        missing_symbols = self.binance_ticker_service.get_missing_symbols(
+            binance_data
         )
 
         # Log warning if we need to use fallback for any symbols
         if missing_symbols:
             logger.warning(
-                f"CoinGecko missing data for {missing_symbols}, "
+                f"Binance missing data for {missing_symbols}, "
                 f"using mock data as fallback"
             )
 
-        # Build result list from CoinGecko data
+        # Build result list from Binance data
         result: List[MarketDataEntity] = []
         id_counter = 1
 
-        for symbol_str, data in coingecko_data.items():
+        for symbol_str, data in binance_data.items():
             try:
                 symbol = CryptoSymbol(symbol_str)
             except ValueError:
@@ -75,11 +75,11 @@ class MarketDataService:
                     id=id_counter,
                     symbol=symbol,
                     price=Decimal(str(data["price"])),
-                    market_cap=Decimal(str(data["market_cap"])),
+                    market_cap=None,  # Binance doesn't provide market cap
                     volume_24h=Decimal(str(data["volume_24h"])),
                     change_24h=Decimal(str(data["change_24h"])),
-                    timestamp=data["last_updated"],
-                    source=data.get("source", "coingecko"),
+                    timestamp=data["timestamp"],
+                    source=data.get("source", "binance_ticker"),
                 )
             )
             id_counter += 1
@@ -99,8 +99,8 @@ class MarketDataService:
     ) -> Optional[MarketDataResponse]:
         """Get market data for a specific symbol.
 
-        Fetches real data from CoinGecko API. Falls back to mock data
-        if CoinGecko doesn't have data for the requested symbol.
+        Fetches real data from Binance ticker API. Falls back to mock data
+        if Binance doesn't have data for the requested symbol.
 
         Args:
             symbol: Cryptocurrency symbol (e.g., 'BTC', 'ETH', 'SOL')
@@ -116,26 +116,28 @@ class MarketDataService:
         except ValueError:
             return None
 
-        # Try to fetch real data from CoinGecko
-        coingecko_data = await self.coingecko_service.fetch_market_data()
+        # Try to fetch real data from Binance
+        binance_data = await self.binance_ticker_service.fetch_ticker_data(
+            [symbol_upper]
+        )
 
-        if symbol_upper in coingecko_data:
-            data = coingecko_data[symbol_upper]
+        if symbol_upper in binance_data:
+            data = binance_data[symbol_upper]
             entity = MarketDataEntity(
                 id=1,
                 symbol=symbol_enum,
                 price=Decimal(str(data["price"])),
-                market_cap=Decimal(str(data["market_cap"])),
+                market_cap=None,  # Binance doesn't provide market cap
                 volume_24h=Decimal(str(data["volume_24h"])),
                 change_24h=Decimal(str(data["change_24h"])),
-                timestamp=data["last_updated"],
-                source=data.get("source", "coingecko"),
+                timestamp=data["timestamp"],
+                source=data.get("source", "binance_ticker"),
             )
             return self._entity_to_response(entity)
 
         # Fallback to mock data
         logger.warning(
-            f"CoinGecko missing data for {symbol_upper}, "
+            f"Binance missing data for {symbol_upper}, "
             f"using mock data as fallback"
         )
         mock_data = self._generate_mock_data_for_symbols([symbol_upper])
@@ -203,7 +205,7 @@ class MarketDataService:
                     id=i + 1,
                     symbol=symbol_enum,
                     price=values["price"],
-                    market_cap=values["market_cap"],
+                    market_cap=values["market_cap"],  # Mock data includes market cap
                     volume_24h=values["volume_24h"],
                     change_24h=values["change_24h"],
                     timestamp=now,

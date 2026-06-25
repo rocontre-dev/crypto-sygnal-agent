@@ -5,7 +5,7 @@ import './UpdateStatusBar.css';
 
 interface DashboardMeta {
   updated_at: string;
-  source: "coingecko" | "mock";
+  source: "binance_ticker" | "mock";
   cache_status: "fresh" | "cached";
   generation_time_ms: number;
 }
@@ -36,7 +36,7 @@ export function UpdateStatusBar({ marketData, dashboardMeta }: UpdateStatusBarPr
         <span className="update-status-bar__value">{formattedDate}</span>
         <span className="update-status-bar__separator">|</span>
         <span className="update-status-bar__source">
-          Fuente: {isFallback ? 'Datos simulados' : 'CoinGecko'}
+          Fuente: {isFallback ? 'Datos simulados' : 'Binance'}
         </span>
         <span className="update-status-bar__separator">|</span>
         <span className={`update-status-bar__status ${isFallback ? 'update-status-bar__status--warning' : 'update-status-bar__status--ok'}`}>
@@ -88,7 +88,7 @@ export function UpdateStatusBar({ marketData, dashboardMeta }: UpdateStatusBarPr
       <span className="update-status-bar__value">{formattedDate}</span>
       <span className="update-status-bar__separator">|</span>
       <span className="update-status-bar__source">
-        Fuente: {isFallback ? 'Datos simulados' : 'CoinGecko'}
+        Fuente: {isFallback ? 'Datos simulados' : 'Binance'}
       </span>
       <span className="update-status-bar__separator">|</span>
       <span className={`update-status-bar__status ${isFallback ? 'update-status-bar__status--warning' : 'update-status-bar__status--ok'}`}>

@@ -11,11 +11,11 @@ class DashboardMarketData(BaseModel):
 
     symbol: str = Field(..., description="Cryptocurrency symbol")
     price: float = Field(..., description="Current price in USD")
-    market_cap: float = Field(..., description="Market capitalization in USD")
+    market_cap: Optional[float] = Field(default=None, description="Market capitalization in USD (null for Binance ticker)")
     volume_24h: float = Field(..., description="24-hour trading volume in USD")
     change_24h: float = Field(..., description="24-hour price change percentage")
     timestamp: datetime = Field(..., description="Data timestamp")
-    source: str = Field(..., description="Data source (coingecko or mock)")
+    source: str = Field(..., description="Data source (binance_ticker or mock)")
 
 
 class DashboardSignal(BaseModel):
@@ -56,7 +56,7 @@ class DashboardResponse(BaseModel):
     """Response schema for the dashboard endpoint."""
 
     updated_at: datetime = Field(..., description="When the dashboard was last updated")
-    source: str = Field(..., description="Overall data source (coingecko or mock)")
+    source: str = Field(..., description="Overall data source (binance_ticker or mock)")
     cache_status: str = Field(..., description="Cache status (fresh or cached)")
     generation_time_ms: float = Field(..., description="Time to generate in milliseconds")
     items: List[DashboardItem] = Field(..., description="Dashboard items for each symbol")
@@ -65,7 +65,7 @@ class DashboardResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "updated_at": "2024-01-15T10:30:00Z",
-                "source": "coingecko",
+                "source": "binance_ticker",
                 "cache_status": "fresh",
                 "generation_time_ms": 1234.5,
                 "items": [
@@ -73,11 +73,11 @@ class DashboardResponse(BaseModel):
                         "market_data": {
                             "symbol": "BTC",
                             "price": 67500.0,
-                            "market_cap": 1300000000000.0,
+                            "market_cap": None,
                             "volume_24h": 25000000000.0,
                             "change_24h": 2.5,
                             "timestamp": "2024-01-15T10:30:00Z",
-                            "source": "coingecko",
+                            "source": "binance_ticker",
                         },
                         "signal": {
                             "symbol": "BTC",

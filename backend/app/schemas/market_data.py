@@ -13,21 +13,21 @@ class MarketDataResponse(BaseModel):
         id: Unique identifier
         symbol: Cryptocurrency symbol
         price: Current price in USD
-        market_cap: Market capitalization in USD
+        market_cap: Market capitalization in USD (null for Binance ticker)
         volume_24h: 24-hour trading volume in USD
         change_24h: 24-hour price change percentage
         timestamp: Data timestamp
-        source: Data source ("coingecko" or "mock")
+        source: Data source ("binance_ticker" or "mock")
     """
 
     id: Optional[int] = None
     symbol: str = Field(..., description="Cryptocurrency symbol", examples=["BTC"])
     price: float = Field(..., description="Current price in USD", examples=[67500.00])
-    market_cap: float = Field(..., description="Market capitalization in USD", examples=[1300000000000])
+    market_cap: Optional[float] = Field(default=None, description="Market capitalization in USD (null for Binance ticker)", examples=[None])
     volume_24h: float = Field(..., description="24-hour trading volume in USD", examples=[25000000000])
     change_24h: float = Field(..., description="24-hour price change percentage", examples=[2.5])
     timestamp: datetime = Field(..., description="Data timestamp")
-    source: str = Field(default="coingecko", description="Data source", examples=["coingecko", "mock"])
+    source: str = Field(default="binance_ticker", description="Data source", examples=["binance_ticker", "mock"])
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -35,10 +35,11 @@ class MarketDataResponse(BaseModel):
                 "id": 1,
                 "symbol": "BTC",
                 "price": "67500.00",
-                "market_cap": "1300000000000.00",
+                "market_cap": None,
                 "volume_24h": "25000000000.00",
                 "change_24h": "2.50",
-                "timestamp": "2024-01-15T10:30:00Z"
+                "timestamp": "2024-01-15T10:30:00Z",
+                "source": "binance_ticker"
             }
         }
     )

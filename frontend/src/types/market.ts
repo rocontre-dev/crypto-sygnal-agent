@@ -4,11 +4,11 @@ export interface MarketData {
   id: number | null;
   symbol: string;
   price: number;
-  market_cap: number;
+  market_cap: number | null;
   volume_24h: number;
   change_24h: number;
   timestamp: string;
-  source: "coingecko" | "mock";
+  source: "binance_ticker" | "mock";
 }
 
 export interface MarketDataListResponse {
@@ -21,11 +21,11 @@ export interface MarketDataListResponse {
 export interface DashboardMarketData {
   symbol: string;
   price: number;
-  market_cap: number;
+  market_cap: number | null;
   volume_24h: number;
   change_24h: number;
   timestamp: string;
-  source: "coingecko" | "mock";
+  source: "binance_ticker" | "mock";
 }
 
 export interface DashboardSignal {
@@ -58,7 +58,7 @@ export interface DashboardItem {
 
 export interface DashboardResponse {
   updated_at: string;
-  source: "coingecko" | "mock";
+  source: "binance_ticker" | "mock";
   cache_status: "fresh" | "cached";
   generation_time_ms: number;
   items: DashboardItem[];

@@ -19,21 +19,21 @@ class MarketDataEntity:
         id: Unique identifier for the market data record
         symbol: Cryptocurrency symbol (e.g., BTC, ETH, SOL)
         price: Current price in USD
-        market_cap: Market capitalization in USD
+        market_cap: Market capitalization in USD (None for Binance ticker)
         volume_24h: Trading volume in the last 24 hours in USD
         change_24h: Price change percentage in the last 24 hours
         timestamp: When this data was recorded
-        source: Data source ("coingecko" or "mock")
+        source: Data source ("binance_ticker" or "mock")
     """
 
     symbol: CryptoSymbol
     price: Decimal
-    market_cap: Decimal
     volume_24h: Decimal
     change_24h: Decimal
     timestamp: datetime
+    market_cap: Optional[Decimal] = None
     id: Optional[int] = None
-    source: str = "coingecko"
+    source: str = "binance_ticker"
 
     @property
     def symbol_str(self) -> str:
